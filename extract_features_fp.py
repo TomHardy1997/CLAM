@@ -15,7 +15,22 @@ from utils.file_utils import save_hdf5
 from PIL import Image
 import h5py
 import openslide
+from Swin_Transformer.models.swin_transformer import SwinTransformer
+
+
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+def swin_transformer_base(pretrained=True):
+    model = SwinTransformer()
+    if pretrained:
+        checkpoint = torch.load('/home/stat-jijianxin/CLAM/Swin_Transformer/ckpt_epoch_39.pth', 
+                                map_location='cpu')
+        model.load_state_dict(checkpoint['model'], strict=False)
+        model.head = torch.nn.Identity()
+    return model
+
+
+
 
 def compute_w_loader(file_path, output_path, wsi, model,
  	batch_size = 8, verbose = 0, print_every=20, pretrained=True, 
@@ -34,7 +49,7 @@ def compute_w_loader(file_path, output_path, wsi, model,
 	dataset = Whole_Slide_Bag_FP(file_path=file_path, wsi=wsi, pretrained=pretrained, 
 		custom_downsample=custom_downsample, target_patch_size=target_patch_size)
 	x, y = dataset[0]
-	kwargs = {'num_workers': 4, 'pin_memory': True} if device.type == "cuda" else {}
+	kwargs = {'num_workers': 8, 'pin_memory': True} if device.type == "cuda" else {}
 	loader = DataLoader(dataset=dataset, batch_size=batch_size, **kwargs, collate_fn=collate_features)
 
 	if verbose > 0:
@@ -71,6 +86,9 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
+	# model = swin_transformer_base(pretrained=True)
+	# x = torch.randn(10,3,224,224)
+	# import ipdb;ipdb.set_trace()
 
 	print('initializing dataset')
 	csv_path = args.csv_path
@@ -85,7 +103,8 @@ if __name__ == '__main__':
 	dest_files = os.listdir(os.path.join(args.feat_dir, 'pt_files'))
 
 	print('loading model checkpoint')
-	model = resnet50_baseline(pretrained=True)
+	# model = resnet50_baseline(pretrained=True)
+	model = swin_transformer_base(pretrained=True)
 	model = model.to(device)
 	
 	# print_network(model)
